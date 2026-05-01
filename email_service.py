@@ -6,7 +6,7 @@ from email.mime.multipart import MIMEMultipart
 MAIL_USERNAME = os.getenv("MAIL_USERNAME")
 MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
 MAIL_FROM = os.getenv("MAIL_FROM")
-MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
+MAIL_PORT = int(os.getenv("MAIL_PORT", 465))
 MAIL_SERVER = os.getenv("MAIL_SERVER")
 
 def send_email(to_email: str, subject: str, body: str):
@@ -14,15 +14,19 @@ def send_email(to_email: str, subject: str, body: str):
     msg['From'] = MAIL_FROM
     msg['To'] = to_email
     msg['Subject'] = subject
-
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        server = smtplib.SMTP(MAIL_SERVER, MAIL_PORT)
-        server.starttls()
+        # Якщо порт 465, використовуємо SMTP_SSL
+        if MAIL_PORT == 465:
+            server = smtplib.SMTP_SSL(MAIL_SERVER, MAIL_PORT)
+        else:
+            # Для порту 587 використовуємо звичайний SMTP + starttls
+            server = smtplib.SMTP(MAIL_SERVER, MAIL_PORT)
+            server.starttls()
+            
         server.login(MAIL_USERNAME, MAIL_PASSWORD)
-        text = msg.as_string()
-        server.sendmail(MAIL_FROM, to_email, text)
+        server.sendmail(MAIL_FROM, to_email, msg.as_string())
         server.quit()
         return True
     except Exception as e:
