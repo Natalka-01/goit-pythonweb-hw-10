@@ -18,7 +18,10 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 import os
 import sys
+from dotenv import load_dotenv
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 from models import Base  # noqa: E402
 target_metadata = Base.metadata
 

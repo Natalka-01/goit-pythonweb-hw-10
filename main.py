@@ -1,7 +1,9 @@
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import exc
 from sqlalchemy.orm import Session
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -15,7 +17,8 @@ from models import Contact, User
 from schemas import ContactCreate, ContactUpdate, Contact, UserCreate, User, Token
 from crud import (
     get_contacts, get_contact, create_contact, update_contact, delete_contact,
-    search_contacts, get_upcoming_birthdays, get_user_by_email, create_user, update_user_avatar, confirm_user_email, get_user_by_verification_token
+    search_contacts, get_upcoming_birthdays, get_user_by_email, get_user_by_username,
+    create_user, update_user_avatar, confirm_user_email, get_user_by_verification_token
 )
 from auth import authenticate_user, create_access_token, get_current_user, get_password_hash
 from email_service import send_email
@@ -55,12 +58,18 @@ app.add_middleware(SlowAPIMiddleware)
 # Auth routes
 @app.post("/auth/register", response_model=User, status_code=201)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = get_user_by_email(db, email=user.email)
-    if db_user:
+    if get_user_by_email(db, email=user.email):
         raise HTTPException(status_code=409, detail="User with this email already exists")
+    if get_user_by_username(db, username=user.username):
+        raise HTTPException(status_code=409, detail="User with this username already exists")
+
     verification_token = secrets.token_urlsafe(32)
-    new_user = create_user(db, user, verification_token=verification_token)
-    # Send verification email
+    try:
+        new_user = create_user(db, user, verification_token=verification_token)
+    except exc.IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="User with this email or username already exists")
+
     subject = "Email Verification"
     body = f"Please verify your email by clicking the link: http://localhost:8000/auth/verify?token={verification_token}"
     send_email(new_user.email, subject, body)
@@ -94,7 +103,7 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = D
 # Users routes
 @app.get("/users/me", response_model=User)
 @limiter.limit("10/minute")
-def read_users_me(current_user: User = Depends(get_current_user)):
+def read_users_me(request: Request, current_user: User = Depends(get_current_user)):
     return current_user
 
 @app.patch("/users/avatar", response_model=User)

@@ -19,8 +19,7 @@ class ContactUpdate(ContactBase):
 class Contact(ContactBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class UserBase(BaseModel):
     username: str
@@ -34,8 +33,7 @@ class User(UserBase):
     id: int
     confirmed: bool
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class Token(BaseModel):
     access_token: str
