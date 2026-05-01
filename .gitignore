@@ -78,6 +78,16 @@ target/
 .ipynb_checkpoints
 
 # IPython
+.ipynb_checkpoints
+
+# Environment
+.env
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
 profile_default/
 ipython_config.py
 

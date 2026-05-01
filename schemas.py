@@ -21,3 +21,25 @@ class Contact(ContactBase):
 
     class Config:
         from_attributes = True
+
+class UserBase(BaseModel):
+    username: str
+    email: str
+    avatar: Optional[str] = None
+
+class UserCreate(UserBase):
+    password: str
+
+class User(UserBase):
+    id: int
+    confirmed: bool
+
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
