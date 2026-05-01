@@ -28,7 +28,7 @@ REST API for contacts with JWT auth, email verification, Cloudinary avatar uploa
 copy .env.example .env
 ```
 
-2. Update `.env` with your PostgreSQL, JWT, Cloudinary, and email settings.
+2. Update `.env` 
 
 3. Start services with Docker Compose:
 
@@ -39,7 +39,7 @@ docker compose up -d --build
 4. Run migrations inside the `web` container or locally:
 
 ```bash
-alembic upgrade head
+docker compose exec web alembic upgrade head
 ```
 
 ## Run locally
