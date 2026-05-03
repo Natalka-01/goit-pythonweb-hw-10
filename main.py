@@ -12,6 +12,7 @@ from slowapi.middleware import SlowAPIMiddleware
 import cloudinary
 import cloudinary.uploader
 import os
+import logging
 from database import get_db, engine, Base
 from models import Contact, User
 from schemas import ContactCreate, ContactUpdate, Contact, UserCreate, User, Token
@@ -23,6 +24,11 @@ from crud import (
 from auth import authenticate_user, create_access_token, get_current_user, get_password_hash
 from email_service import send_email
 import secrets
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env
 load_dotenv()
@@ -36,9 +42,7 @@ cloudinary.config(
 
 app = FastAPI(title="Contacts API", description="API for managing contacts")
 
-@app.on_event("startup")
-def startup_event():
-    Base.metadata.create_all(bind=engine)
+
 
 # CORS
 app.add_middleware(
@@ -66,14 +70,19 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     verification_token = secrets.token_urlsafe(32)
     try:
         new_user = create_user(db, user, verification_token=verification_token)
+        
+        subject = "Email Verification"
+        body = f"Please verify your email: http://localhost:8000/auth/verify?token={verification_token}"
+        
+        
+        email_sent = send_email(new_user.email, subject, body)
+        if not email_sent:
+            logger.warning(f"Verification email could not be sent to {new_user.email}") 
+            
+        return new_user
     except exc.IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=409, detail="User with this email or username already exists")
-
-    subject = "Email Verification"
-    body = f"Please verify your email by clicking the link: http://localhost:8000/auth/verify?token={verification_token}"
-    send_email(new_user.email, subject, body)
-    return new_user
+        raise HTTPException(status_code=409, detail="User already exists")
 
 @app.get("/auth/verify")
 def verify_email(token: str, db: Session = Depends(get_db)):
@@ -108,10 +117,17 @@ def read_users_me(request: Request, current_user: User = Depends(get_current_use
 
 @app.patch("/users/avatar", response_model=User)
 def update_avatar(file: UploadFile = File(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    result = cloudinary.uploader.upload(file.file)
-    avatar_url = result.get("url")
-    updated_user = update_user_avatar(db, current_user.id, avatar_url)
-    return updated_user
+    try:
+        result = cloudinary.uploader.upload(file.file, public_id=f"avatars/{current_user.username}")
+        avatar_url = result.get("url")
+        
+        if not avatar_url:
+            raise HTTPException(status_code=500, detail="Failed to get URL from Cloudinary")
+            
+        updated_user = update_user_avatar(db, current_user.id, avatar_url)
+        return updated_user
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cloudinary error: {str(e)}")
 
 # Contacts routes
 @app.get("/contacts/", response_model=list[Contact])

@@ -92,6 +92,7 @@ def confirm_user_email(db: Session, user_id: int):
     db_user = db.query(User).filter(User.id == user_id).first()
     if db_user:
         db_user.confirmed = True
+        db_user.verification_token = None 
         db.commit()
         db.refresh(db_user)
     return db_user

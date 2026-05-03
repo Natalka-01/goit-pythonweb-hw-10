@@ -17,7 +17,7 @@ def send_email(to_email: str, subject: str, body: str):
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        # Якщо порт 465, використовуємо SMTP_SSL
+       
         if MAIL_PORT == 465:
             server = smtplib.SMTP_SSL(MAIL_SERVER, MAIL_PORT)
         else:
@@ -30,5 +30,4 @@ def send_email(to_email: str, subject: str, body: str):
         server.quit()
         return True
     except Exception as e:
-        print(f"Failed to send email: {e}")
-        return False
+        raise ConnectionError(f"Failed to send email: {e}")
